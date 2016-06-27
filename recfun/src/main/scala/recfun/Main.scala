@@ -47,7 +47,7 @@ object Main {
       def inner(money: Int, coins: List[Int]): Int =
         if (money < 0)
           0
-        else if (money == 0 && coins.isEmpty)
+        else if (money == 0)
           1
         else if (coins.isEmpty)
           0
@@ -56,7 +56,7 @@ object Main {
             if (s.isEmpty)
               0
             else
-              countChange(money - s.head, s.tail) +
+              /*countChange(money - s.head, s.tail) +*/
               countChange(money - s.head, s)
           ).sum
 
