@@ -23,43 +23,33 @@ object Main {
    * Exercise 2
    */
     def balance(chars: List[Char]): Boolean = {
-      def inner(chars: List[Char], count: Int): Boolean =
+      def balanceImpl(chars: List[Char], count: Int): Boolean =
         if (count < 0)
           false
         else
           if (chars.isEmpty)
             count == 0
           else
-            if (chars.head == '(')
-              inner(chars.tail, count + 1)
-            else if (chars.head == ')')
-              inner(chars.tail, count - 1)
-            else
-              inner(chars.tail, count)
+            balanceImpl(
+              chars.tail,
+              count + (if (chars.head == '(') 1 else if (chars.head == ')') -1 else 0))
 
-      inner(chars, 0)
+      balanceImpl(chars, 0)
     }
   
   /**
    * Exercise 3
    */
     def countChange(money: Int, coins: List[Int]): Int = {
-      def inner(money: Int, coins: List[Int]): Int =
-        if (money < 0)
-          0
-        else if (money == 0)
+      def countSortedChange(money: Int, sortedCoins: List[Int]): Int =
+        if (money == 0)
           1
-        else if (coins.isEmpty)
+        else if (money < 0 || sortedCoins.isEmpty)
           0
         else
-          coins.tails.map(s =>
-            if (s.isEmpty)
-              0
-            else
-              /*countChange(money - s.head, s.tail) +*/
-              countChange(money - s.head, s)
-          ).sum
+          sortedCoins.tails.toList.init.map(
+            s => countSortedChange(money - s.head, s)).sum
 
-      inner(money, coins.sorted)
+      countSortedChange(money, coins.sorted)
     }
   }
