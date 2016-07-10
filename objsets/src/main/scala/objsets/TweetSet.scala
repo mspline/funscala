@@ -105,7 +105,7 @@ abstract class TweetSet {
    */
   def foreach(f: Tweet => Unit): Unit
 
-  def fld[A](f: (Tweet, A) => A, z: A): A
+  def fld[A](f: (Tweet, A, A) => A, z: A): A
 }
 
 class Empty extends TweetSet {
@@ -127,7 +127,7 @@ class Empty extends TweetSet {
 
   def mostRetweeted: Tweet = throw new NoSuchElementException
 
-  def fld[A](f: (Tweet, A) => A, z: A): A = z
+  def fld[A](f: (Tweet, A, A) => A, z: A): A = z
 
   def descendingByRetweet: TweetList = Nil
 }
@@ -165,9 +165,9 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
   def union(that: TweetSet): TweetSet = left union (right union that) incl elem
 
-  def mostRetweeted: Tweet = fld((t, a: Tweet) => if (t.retweets > a.retweets) t else a, elem)
+  def mostRetweeted: Tweet = fld((l: Tweet, r: Tweet, a: Tweet) => List(l, r, a).maxBy(_.retweets), elem)
 
-  def fld[A](f: (Tweet, A) => A, z: A): A = f(elem, left.fld(f, right.fld(f, z)))
+  def fld[A](f: (Tweet, A, A) => A, z: A): A = f(elem, left.fld(f, z), right.fld(f, z))
 
   def descendingByRetweet: TweetList = new Cons(mostRetweeted, remove(mostRetweeted).descendingByRetweet)
 }
