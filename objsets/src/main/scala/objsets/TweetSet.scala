@@ -167,7 +167,7 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
   def mostRetweeted: Tweet = fld((t, a: Tweet) => if (t.retweets > a.retweets) t else a, elem)
 
-  def fld[A](f: (Tweet, A) => A, z: A): A = left.fld(f, right.fld(f, z))
+  def fld[A](f: (Tweet, A) => A, z: A): A = f(elem, left.fld(f, right.fld(f, z)))
 
   def descendingByRetweet: TweetList = new Cons(mostRetweeted, remove(mostRetweeted).descendingByRetweet)
 }
@@ -210,5 +210,6 @@ object GoogleVsApple {
 
 object Main extends App {
   // Print the trending tweets
-  GoogleVsApple.trending foreach println
+  println(GoogleVsApple.appleTweets.mostRetweeted)
+  //GoogleVsApple.trending foreach println
 }
