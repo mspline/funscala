@@ -134,8 +134,8 @@ class Empty extends TweetSet {
 
 class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
-  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = acc
-     //right.filterAcc(p, left.filterAcc(p, if (p(elem)) acc incl elem else acc))
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet =
+     right.filterAcc(p, left.filterAcc(p, if (p(elem)) acc incl elem else acc))
 
   /**
    * The following methods are already implemented
@@ -163,7 +163,7 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
     right.foreach(f)
   }
 
-  def union(that: TweetSet): TweetSet = left union right union that incl elem
+  def union(that: TweetSet): TweetSet = left union (right union that) incl elem
 
   def mostRetweeted: Tweet = fld((t, a: Tweet) => if (t.retweets > a.retweets) t else a, elem)
 
