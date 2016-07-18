@@ -73,10 +73,7 @@ object Huffman {
    *       println("integer is  : "+ theInt)
    *   }
    */
-  def times(chars: List[Char]): List[(Char, Int)] = chars.sorted.foldLeft[List[(Char, Int)]](Nil)((r, c) => r match {
-    case Nil => (c, 1) :: Nil
-    case (a, n) :: xs => if (a == c) (a, n + 1) :: xs else (c, 1) :: r
-  })
+  def times(chars: List[Char]): List[(Char, Int)] = chars.groupBy(e => e).map{case (c, elems) => (c, elems.size)}.toList
   
   /**
    * Returns a list of `Leaf` nodes for a given frequency table `freqs`.
@@ -85,7 +82,7 @@ object Huffman {
    * head of the list should have the smallest weight), where the weight
    * of a leaf is the frequency of the character.
    */
-  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = freqs.map{ case (a, n) => Leaf(a, n) }.sortBy(l => l.weight)
+  def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = freqs.map{case (a, n) => Leaf(a, n)}.sortBy(l => l.weight)
 
   /**
    * Checks whether the list `trees` contains only one single code tree.
@@ -94,7 +91,7 @@ object Huffman {
     case _ :: Nil => true
     case _ => false
   }
-  
+
   /**
    * The parameter `trees` of this function is a list of code trees ordered
    * by ascending weights.
@@ -108,30 +105,17 @@ object Huffman {
    * unchanged.
    */
   def combine(trees: List[CodeTree]): List[CodeTree] = {
-    def insertIntoSorted[T](elem: T, list: List[T], less: (T, T) => Boolean): List[T] = list match
-    {
+    def insertIntoSorted[T](elem: T, list: List[T], less: (T, T) => Boolean): List[T] = list match {
       case Nil => elem :: Nil
       case head :: tail => if (less(elem, head)) elem :: list else head :: insertIntoSorted(elem, list.tail, less)
     }
 
     trees match {
-      case ct1 :: ct2 :: xs => insertIntoSorted(
-        Fork(ct1, ct2, chars(ct1) ++ chars(ct2), weight(ct1) + weight(ct2)),
-        xs,
-        (ct1: CodeTree, ct2: CodeTree) => ct1 match {
-          case leaf1: Leaf => ct2 match {
-            case leaf2: Leaf => leaf1.weight < leaf2.weight
-            case fork2: Fork => leaf1.weight < fork2.weight
-          }
-          case fork1: Fork => ct2 match {
-            case leaf2: Leaf => fork1.weight < leaf2.weight
-            case fork2: Fork => fork1.weight < fork2.weight
-          }
-        })
+      case ct1 :: ct2 :: xs => insertIntoSorted(makeCodeTree(ct1, ct2), xs, (a: CodeTree, b: CodeTree) => weight(a) < weight(b))
       case xs => xs
     }
   }
-  
+
   /**
    * This function will be called in the following way:
    *
@@ -149,16 +133,16 @@ object Huffman {
    *    the example invocation. Also define the return type of the `until` function.
    *  - try to find sensible parameter names for `xxx`, `yyy` and `zzz`.
    */
-  def until(predicate: List[CodeTree] => Boolean, transform: List[CodeTree] => List[CodeTree])(list: List[CodeTree]): CodeTree =
-    if (predicate(list)) list.head else until(predicate, transform)(transform(list))
-  
+  def until[T](predicate: T => Boolean, transform: T => T)(t: T): T =
+    if (predicate(t)) t else until(predicate, transform)(transform(t))
+
   /**
    * This function creates a code tree which is optimal to encode the text `chars`.
    *
    * The parameter `chars` is an arbitrary text. This function extracts the character
    * frequencies from that text and creates a code tree based on them.
    */
-  def createCodeTree(chars: List[Char]): CodeTree = until(singleton, combine)(makeOrderedLeafList(times(chars)))
+  def createCodeTree(chars: List[Char]): CodeTree = until(singleton, combine)(makeOrderedLeafList(times(chars))).head
 
   // Part 3: Decoding
 
@@ -169,21 +153,19 @@ object Huffman {
    * the resulting list of characters.
    */
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    def impl(subTree: Option[CodeTree], bits: List[Bit], acc: List[Char]): List[Char] = {
-      subTree match {
-        case None => if (bits.isEmpty) acc else impl(Some(tree), bits, acc)
-        case Some(codeTree) => codeTree match {
-          case leaf: Leaf => impl(None, bits, acc :+ leaf.char)
-          case fork: Fork =>
-            if (bits.isEmpty)
-              throw new Error
-            else
-              impl(Some(if (bits.head == 0) fork.left else fork.right), bits.tail, acc)
-        }
+    def impl(subTree: CodeTree, bits: List[Bit], isStartingNewChar: Boolean, acc: List[Char]): List[Char] = {
+      (subTree, bits, isStartingNewChar) match {
+        case (_,          Nil,     true) => acc
+        case (_,          _,       true) => impl(tree, bits, false, acc)
+        case (leaf: Leaf, _,       _)    => impl(tree, bits, true, acc :+ leaf.char)
+        case (_,          Nil,     _)    => throw new Error
+        case (fork: Fork, 0 :: tl, _)    => impl(fork.left,  tl, false, acc)
+        case (fork: Fork, 1 :: tl, _)    => impl(fork.right, tl, false, acc)
+        case (_,          _,       _)    => throw new Error
       }
     }
 
-    impl(Some(tree), bits, Nil)
+    impl(tree, bits, true, Nil)
   }
 
   /**
@@ -247,41 +229,15 @@ object Huffman {
    * sub-trees, think of how to build the code table for the entire tree.
    */
   def convert(tree: CodeTree): CodeTable = {
-    def fold[D, U](ct: CodeTree,
-                   forkDownLeft: (List[Char], Int, D) => D,
-                   forkDownRight: (List[Char], Int, D) => D,
-                   leafUp: (Char, Int, D) => U,
-                   forkUp: (List[Char], Int, U, U) => U,
-                   d: D): U =
-      ct match {
-        case Leaf(char, weight) => leafUp(char, weight, d)
-
-        case Fork(left, right, chars, weight) => forkUp(
-                             chars,
-                             weight,
-                             fold(
-                               left,
-                               forkDownLeft,
-                               forkDownRight,
-                               leafUp,
-                               forkUp,
-                               forkDownLeft(chars, weight, d)),
-                             fold(
-                               right,
-                               forkDownLeft,
-                               forkDownRight,
-                               leafUp,
-                               forkUp,
-                               forkDownRight(chars, weight, d)))
+    def fold[A](ct: CodeTree, fLeaf: Char => A, fFork: (A, A) => A): A = ct match {
+      case Leaf(char, _) => fLeaf(char)
+      case Fork(left, right, _, _) => fFork(fold(left, fLeaf, fFork), fold(right, fLeaf, fFork))
     }
 
-    fold[List[Bit], CodeTable](
+    fold(
       tree,
-      (_, _, code) => 0 :: code,
-      (_, _, code) => 1 :: code,
-      (c, _, code) => List((c, code.reverse)),
-      (_, _, leftCode, rightCode) => mergeCodeTables(leftCode, rightCode),
-      Nil)
+      c => List((c, Nil)),
+      (left: CodeTable, right: CodeTable) => mergeCodeTables(left.map(e => (e._1, 0 :: e._2)), right.map(e => (e._1, 1 :: e._2))))
   }
 
   /**
