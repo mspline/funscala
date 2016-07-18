@@ -111,7 +111,7 @@ object Huffman {
     def insertIntoSorted[T](elem: T, list: List[T], less: (T, T) => Boolean): List[T] = list match
     {
       case Nil => elem :: Nil
-      case head :: tail => if (less(elem, head)) elem :: list else head :: insertIntoSorted(elem, list, less)
+      case head :: tail => if (less(elem, head)) elem :: list else head :: insertIntoSorted(elem, list.tail, less)
     }
 
     trees match {
