@@ -248,43 +248,39 @@ object Huffman {
    */
   def convert(tree: CodeTree): CodeTable = {
     def fold[D, U](ct: CodeTree,
-                   forkDownLeft: D => D,
-                   forkDownRight: D => D,
-                   leafDown: D => D,
-                   leafUp: (Char, D) => U,
-                   forkUp: (U, U) => U,
+                   forkDownLeft: (List[Char], Int, D) => D,
+                   forkDownRight: (List[Char], Int, D) => D,
+                   leafUp: (Char, Int, D) => U,
+                   forkUp: (List[Char], Int, U, U) => U,
                    d: D): U =
       ct match {
-        case leaf: Leaf => leafUp(
-                             leaf.char,
-                             leafDown(d))
+        case Leaf(char, weight) => leafUp(char, weight, d)
 
-        case fork: Fork => forkUp(
+        case Fork(left, right, chars, weight) => forkUp(
+                             chars,
+                             weight,
                              fold(
-                               fork.left,
+                               left,
                                forkDownLeft,
                                forkDownRight,
-                               leafDown,
                                leafUp,
                                forkUp,
-                               forkDownLeft(d)),
+                               forkDownLeft(chars, weight, d)),
                              fold(
-                               fork.left,
+                               right,
                                forkDownLeft,
                                forkDownRight,
-                               leafDown,
                                leafUp,
                                forkUp,
-                               forkDownRight(d)))
+                               forkDownRight(chars, weight, d)))
     }
 
     fold[List[Bit], CodeTable](
       tree,
-      0 :: _,
-      1 :: _,
-      _.reverse,
-      (c, code) => List((c, code)),
-      mergeCodeTables,
+      (_, _, code) => 0 :: code,
+      (_, _, code) => 1 :: code,
+      (c, _, code) => List((c, code.reverse)),
+      (_, _, leftCode, rightCode) => mergeCodeTables(leftCode, rightCode),
       Nil)
   }
 
