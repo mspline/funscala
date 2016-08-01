@@ -82,7 +82,7 @@ object Anagrams {
    *  in the example above could have been displayed in some other order.
    */
   def combinations(occurrences: Occurrences): List[Occurrences] = occurrences match {
-    case Nil => Nil
+    case Nil => List(Nil)
     case (c, len) :: os => {
       for {
         l <- 0 to len
