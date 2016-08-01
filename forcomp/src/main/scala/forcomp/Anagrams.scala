@@ -159,8 +159,9 @@ object Anagrams {
    *  Note: There is only one anagram of an empty sentence.
    */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
-    def impl(ocs: Occurrences): List[Sentence] = {
-      for {
+    def impl(ocs: Occurrences): List[Sentence] = ocs match {
+      case Nil => List(Nil)
+      case _ => for {
         comb <- combinations(ocs) filter (dictionaryByOccurrences.contains(_))
         word <- dictionaryByOccurrences(comb)
         nested <- impl(subtract(ocs, comb))
